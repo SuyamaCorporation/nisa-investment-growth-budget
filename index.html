@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NISA 投資成長 シミュレーション</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+<div class="max-w-4xl mx-auto px-4 py-8">
+  <h1 class="text-3xl font-bold text-gray-800 mb-2">NISA 投資成長 シミュレーション</h1>
+  <p class="text-gray-500 mb-6">新NISAの非課税メリットと課税口座を比較します</p>
+
+  <!-- 入力パネル -->
+  <div class="bg-white rounded-xl shadow p-6 mb-6">
+    <h2 class="text-lg font-semibold mb-4">シミュレーション設定</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">NISA種別</label>
+          <select id="nisa-type" class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 focus:outline-none" aria-label="NISA種別">
+            <option value="tsumitate">つみたて投資枠（年間120万円・無期限）</option>
+            <option value="growth">成長投資枠（年間240万円・無期限）</option>
+            <option value="both">両枠（年間360万円・生涯1,800万円）</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">年間積立額</label>
+          <div class="flex items-center gap-2">
+            <input type="range" id="annual-amount" min="12" max="360" step="12" value="120" class="flex-1" aria-label="年間積立額スライダー">
+            <div class="flex items-center gap-1">
+              <input type="number" id="annual-amount-num" min="12" max="360" step="12" value="120" class="border rounded px-2 py-1 text-sm w-24 text-right" aria-label="年間積立額（万円）">
+              <span class="text-sm text-gray-600">万円</span>
+            </div>
+          </div>
+          <div class="text-xs text-gray-400 mt-1">月 <span id="monthly-amount">10</span> 万円</div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">想定年利回り</label>
+          <div class="flex items-center gap-2">
+            <input type="range" id="return-rate" min="1" max="15" step="0.5" value="5" class="flex-1" aria-label="想定年利回りスライダー">
+            <div class="flex items-center gap-1">
+              <input type="number" id="return-rate-num" min="1" max="15" step="0.5" value="5" class="border rounded px-2 py-1 text-sm w-20 text-right" aria-label="想定年利回り（%）">
+              <span class="text-sm text-gray-600">%</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">積立期間</label>
+          <div class="flex items-center gap-2">
+            <input type="range" id="period" min="1" max="40" step="1" value="20" class="flex-1" aria-label="積立期間スライダー">
+            <div class="flex items-center gap-1">
+              <input type="number" id="period-num" min="1" max="40" step="1" value="20" class="border rounded px-2 py-1 text-sm w-20 text-right" aria-label="積立期間（年）">
+              <span class="text-sm text-gray-600">年</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">課税口座の税率</label>
+          <select id="tax-rate" class="w-full border rounded-lg px-3 py-2 text-sm" aria-label="税率">
+            <option value="0.20315">通常（20.315%）</option>
+            <option value="0.2">簡易（20%）</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <!-- 結果サマリカード -->
+        <div class="space-y-3">
+          <div class="bg-indigo-50 rounded-xl p-4">
+            <div class="text-sm text-indigo-600 font-medium mb-1">NISA 最終資産</div>
+            <div id="nisa-final" class="text-3xl font-bold text-indigo-700">—</div>
+            <div id="nisa-note" class="text-xs text-indigo-400 mt-1"></div>
+          </div>
+          <div class="bg-gray-100 rounded-xl p-4">
+            <div class="text-sm text-gray-600 font-medium mb-1">課税口座 最終資産</div>
+            <div id="taxed-final" class="text-3xl font-bold text-gray-700">—</div>
+          </div>
+          <div class="bg-green-50 rounded-xl p-4">
+            <div class="text-sm text-green-600 font-medium mb-1">非課税メリット（差額）</div>
+            <div id="benefit" class="text-3xl font-bold text-green-700">—</div>
+          </div>
+          <div class="bg-yellow-50 rounded-xl p-4">
+            <div class="text-sm text-yellow-700 font-medium mb-1">総積立元本</div>
+            <div id="total-principal" class="text-2xl font-bold text-yellow-700">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex gap-3 mt-4">
+      <button id="save-btn" class="bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-4 py-2 rounded-lg text-sm">💾 保存</button>
+      <button id="load-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm">📂 復元</button>
+    </div>
+  </div>
+
+  <!-- グラフ -->
+  <div class="bg-white rounded-xl shadow p-6 mb-6">
+    <h2 class="text-lg font-semibold mb-1">資産成長グラフ</h2>
+    <p class="text-xs text-gray-400 mb-4">青: NISA（非課税）/ 赤: 課税口座</p>
+    <canvas id="growth-chart" width="800" height="400" class="w-full" aria-label="資産成長グラフ"></canvas>
+  </div>
+
+  <!-- 年度別テーブル -->
+  <div class="bg-white rounded-xl shadow p-6">
+    <h2 class="text-lg font-semibold mb-3">年度別シミュレーション</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-gray-100">
+            <th class="text-left px-3 py-2">年数</th>
+            <th class="text-right px-3 py-2">元本</th>
+            <th class="text-right px-3 py-2">NISA残高</th>
+            <th class="text-right px-3 py-2">課税残高</th>
+            <th class="text-right px-3 py-2">非課税メリット</th>
+          </tr>
+        </thead>
+        <tbody id="yearly-table" class="divide-y divide-gray-100"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY='nisa-sim-v1';
+const MAX_NISA={'tsumitate':1800,'growth':1200,'both':1800};
+const ANNUAL_LIMIT={'tsumitate':120,'growth':240,'both':360};
+
+function fmt(v){return Math.round(v).toLocaleString()+'万円';}
+function fmtShort(v){return Math.round(v).toLocaleString();}
+
+function calcNISA(annualAmount, rate, years, nisaType, taxRate){
+  const maxLifetime=MAX_NISA[nisaType];
+  const annualLimit=ANNUAL_LIMIT[nisaType];
+  const r=rate/100;
+  const results=[];
+  let nisaBalance=0,taxedBalance=0,principal=0,cumulativeNisa=0;
+
+  for(let y=1;y<=years;y++){
+    const contribution=Math.min(annualAmount, annualLimit, maxLifetime-cumulativeNisa);
+    const actualContrib=Math.max(0,contribution);
+    principal+=annualAmount;
+    cumulativeNisa+=actualContrib;
+
+    // NISA: 年初積立→年末に運用益（複利）
+    nisaBalance=(nisaBalance+actualContrib)*(1+r);
+    // 残り分があれば課税口座
+    const taxedContrib=annualAmount-actualContrib;
+    taxedBalance=(taxedBalance+taxedContrib)*(1+r);
+
+    // 課税口座の含み益に税がかかる（年末税引き後）
+    const taxedGain=(taxedBalance-(principal-cumulativeNisa));
+    const taxedAfterTax=taxedGain>0?taxedBalance-taxedGain*taxRate:taxedBalance;
+
+    results.push({year:y,principal,nisaBalance,taxedBalance:taxedAfterTax,benefit:nisaBalance-taxedAfterTax});
+  }
+  return results;
+}
+
+function drawChart(results){
+  const canvas=document.getElementById('growth-chart');
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width,H=canvas.height;
+  ctx.clearRect(0,0,W,H);
+
+  const pad={top:20,right:20,bottom:40,left:80};
+  const cW=W-pad.left-pad.right,cH=H-pad.top-pad.bottom;
+
+  const maxVal=Math.max(...results.map(r=>Math.max(r.nisaBalance,r.taxedBalance,r.principal)));
+  const minVal=0;
+  const range=maxVal-minVal||1;
+
+  function xPos(i){return pad.left+i/(results.length-1||1)*cW;}
+  function yPos(v){return pad.top+cH-(v-minVal)/range*cH;}
+
+  // グリッド
+  ctx.strokeStyle='#e5e7eb';ctx.lineWidth=1;
+  for(let i=0;i<=5;i++){
+    const y=pad.top+cH*i/5;
+    ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(pad.left+cW,y);ctx.stroke();
+    const val=maxVal*(1-i/5);
+    ctx.fillStyle='#9ca3af';ctx.font='11px sans-serif';ctx.textAlign='right';
+    ctx.fillText((val/10000>=1?(val/10000).toFixed(0)+'億':Math.round(val).toLocaleString()),pad.left-6,y+4);
+  }
+
+  // X軸
+  ctx.fillStyle='#9ca3af';ctx.font='11px sans-serif';ctx.textAlign='center';
+  const step=Math.max(1,Math.floor(results.length/8));
+  results.forEach((r,i)=>{if(i%step===0||i===results.length-1){ctx.fillText(r.year+'年',xPos(i),H-pad.bottom+16);}});
+
+  // 元本（灰）
+  ctx.strokeStyle='#d1d5db';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
+  ctx.beginPath();results.forEach((r,i)=>{i===0?ctx.moveTo(xPos(i),yPos(r.principal)):ctx.lineTo(xPos(i),yPos(r.principal));});ctx.stroke();ctx.setLineDash([]);
+
+  // 課税口座（赤）
+  ctx.strokeStyle='#f87171';ctx.lineWidth=2;
+  ctx.beginPath();results.forEach((r,i)=>{i===0?ctx.moveTo(xPos(i),yPos(r.taxedBalance)):ctx.lineTo(xPos(i),yPos(r.taxedBalance));});ctx.stroke();
+
+  // NISA（青）
+  ctx.strokeStyle='#6366f1';ctx.lineWidth=3;
+  ctx.beginPath();results.forEach((r,i)=>{i===0?ctx.moveTo(xPos(i),yPos(r.nisaBalance)):ctx.lineTo(xPos(i),yPos(r.nisaBalance));});ctx.stroke();
+
+  // 凡例
+  ctx.font='12px sans-serif';ctx.textAlign='left';
+  ctx.strokeStyle='#6366f1';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(pad.left,15);ctx.lineTo(pad.left+20,15);ctx.stroke();
+  ctx.fillStyle='#4338ca';ctx.fillText('NISA（非課税）',pad.left+24,19);
+  ctx.strokeStyle='#f87171';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(pad.left+130,15);ctx.lineTo(pad.left+150,15);ctx.stroke();
+  ctx.fillStyle='#dc2626';ctx.fillText('課税口座',pad.left+154,19);
+  ctx.strokeStyle='#d1d5db';ctx.setLineDash([4,3]);ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(pad.left+230,15);ctx.lineTo(pad.left+250,15);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#6b7280';ctx.fillText('元本',pad.left+254,19);
+}
+
+function updateNisaLimit(){
+  const type=document.getElementById('nisa-type').value;
+  const limit=ANNUAL_LIMIT[type];
+  const annualNum=document.getElementById('annual-amount-num');
+  const annualRange=document.getElementById('annual-amount');
+  if(+annualNum.value>limit){
+    annualNum.value=limit;annualRange.value=limit;
+  }
+  annualNum.max=limit;annualRange.max=limit;
+}
+
+function simulate(){
+  const annual=+document.getElementById('annual-amount-num').value||120;
+  const rate=+document.getElementById('return-rate-num').value||5;
+  const years=+document.getElementById('period-num').value||20;
+  const type=document.getElementById('nisa-type').value;
+  const taxRate=+document.getElementById('tax-rate').value;
+
+  document.getElementById('monthly-amount').textContent=(annual/12).toFixed(1);
+
+  const results=calcNISA(annual,rate,years,type,taxRate);
+  const last=results[results.length-1];
+
+  document.getElementById('nisa-final').textContent=fmt(last.nisaBalance);
+  document.getElementById('taxed-final').textContent=fmt(last.taxedBalance);
+  document.getElementById('benefit').textContent='+'+fmt(Math.max(0,last.benefit));
+  document.getElementById('total-principal').textContent=fmt(last.principal);
+
+  const maxNisa=MAX_NISA[type];
+  const cumNisa=Math.min(annual*years,maxNisa);
+  if(cumNisa>=maxNisa)document.getElementById('nisa-note').textContent=`生涯${maxNisa}万円枠に到達`;
+  else document.getElementById('nisa-note').textContent=`非課税枠残 ${maxNisa-cumNisa}万円`;
+
+  drawChart(results);
+
+  const tbody=document.getElementById('yearly-table');
+  const displayStep=Math.max(1,Math.floor(years/20));
+  tbody.innerHTML=results.filter((_,i)=>i%displayStep===0||i===results.length-1).map(r=>`
+    <tr class="hover:bg-gray-50">
+      <td class="px-3 py-1.5 text-gray-600">${r.year}年目</td>
+      <td class="px-3 py-1.5 text-right">${fmtShort(r.principal)}</td>
+      <td class="px-3 py-1.5 text-right font-semibold text-indigo-600">${fmtShort(r.nisaBalance)}</td>
+      <td class="px-3 py-1.5 text-right text-gray-600">${fmtShort(r.taxedBalance)}</td>
+      <td class="px-3 py-1.5 text-right text-green-600 font-semibold">+${fmtShort(Math.max(0,r.benefit))}</td>
+    </tr>`).join('');
+}
+
+function syncRange(rangeId,numId){
+  const r=document.getElementById(rangeId),n=document.getElementById(numId);
+  r.addEventListener('input',()=>{n.value=r.value;simulate();});
+  n.addEventListener('input',()=>{r.value=n.value;simulate();});
+}
+syncRange('annual-amount','annual-amount-num');
+syncRange('return-rate','return-rate-num');
+syncRange('period','period-num');
+document.getElementById('nisa-type').addEventListener('change',()=>{updateNisaLimit();simulate();});
+document.getElementById('tax-rate').addEventListener('change',simulate);
+
+document.getElementById('save-btn').addEventListener('click',()=>{
+  localStorage.setItem(STORAGE_KEY,JSON.stringify({
+    annual:document.getElementById('annual-amount-num').value,
+    rate:document.getElementById('return-rate-num').value,
+    years:document.getElementById('period-num').value,
+    type:document.getElementById('nisa-type').value,
+    taxRate:document.getElementById('tax-rate').value
+  }));alert('保存しました');
+});
+
+document.getElementById('load-btn').addEventListener('click',()=>{
+  const d=localStorage.getItem(STORAGE_KEY);
+  if(!d){alert('保存データがありません');return;}
+  const p=JSON.parse(d);
+  document.getElementById('annual-amount-num').value=p.annual;
+  document.getElementById('annual-amount').value=p.annual;
+  document.getElementById('return-rate-num').value=p.rate;
+  document.getElementById('return-rate').value=p.rate;
+  document.getElementById('period-num').value=p.years;
+  document.getElementById('period').value=p.years;
+  document.getElementById('nisa-type').value=p.type;
+  document.getElementById('tax-rate').value=p.taxRate;
+  simulate();alert('復元しました');
+});
+
+simulate();
+</script>
+</body>
+</html>
